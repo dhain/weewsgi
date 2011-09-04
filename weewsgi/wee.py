@@ -21,7 +21,17 @@ def bind(environ, kw):
 
 
 class wee(object):
+    def __new__(cls, __app=None, **kw):
+        if __app is None:
+            def dec_wee(app):
+                return cls(app, **kw)
+            return dec_wee
+        return object.__new__(cls)
+
     def __init__(self, app, **kw):
+        if isinstance(app, wee):
+            kw = dict(app.kw, **kw)
+            app = app.app
         self.app = app
         self.kw = kw
 
@@ -29,7 +39,10 @@ class wee(object):
         bound = wee(self.app.__get__(obj, cls), **self.kw)
         return bound
 
-    def __call__(self, environ, start_response):
-        status, headers, body = self.app(environ, **bind(environ, self.kw))
+    def __call__(self, environ, start_response=None):
+        ret = self.app(environ, **bind(environ, self.kw))
+        if start_response is None:
+            return ret
+        status, headers, body = ret
         start_response(status, headers)
         return body
